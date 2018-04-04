@@ -1,12 +1,21 @@
 ﻿using AspectCore.DynamicProxy;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace AspectCore.Tests.Injector
 {
+    public class Utility
+    {
+        public static void WriteLine(string value)
+        {
+            Debug.WriteLine(value);
+        }
+    }
     public class Intercept1 : AbstractInterceptorAttribute
     {
         public override Task Invoke(AspectContext context, AspectDelegate next)
@@ -21,7 +30,7 @@ namespace AspectCore.Tests.Injector
         public override Task Invoke(AspectContext context, AspectDelegate next)
         {
             var startTime = DateTime.Now;
-            Console.WriteLine($"{startTime}:start");
+            Utility.WriteLine($"{startTime}:start");
             var task = next(context);
 
             if (context.ReturnValue is Task resultTask)
@@ -31,13 +40,13 @@ namespace AspectCore.Tests.Injector
                     // 被代理的方法已经执行
                     var startTimeInner = startTime;
                     var endTime = DateTime.Now;
-                    Console.WriteLine($"{endTime}:end");
+                    Utility.WriteLine($"{endTime}:end");
                 });
             }
             else
             {
                 var endTime = DateTime.Now;
-                Console.WriteLine($"{endTime}:end");
+                Utility.WriteLine($"{endTime}:end");
             }
             return task;
         }
@@ -49,12 +58,12 @@ namespace AspectCore.Tests.Injector
         public async override Task Invoke(AspectContext context, AspectDelegate next)
         {
             var startTime = DateTime.Now;
-            Console.WriteLine($"{startTime}:start");
+            Utility.WriteLine($"{startTime}:start");
             //  var task= next(context);
             await next(context);
             //未等待被代理的方法执行
             var endTime = DateTime.Now;
-            Console.WriteLine($"{endTime}:end");
+            Utility.WriteLine($"{endTime}:end");
         }
     }
 
@@ -67,6 +76,7 @@ namespace AspectCore.Tests.Injector
 
         Task<string> GetValue3(string val);
 
+        Task GetValue4(string val);
 
     }
 
@@ -92,12 +102,32 @@ namespace AspectCore.Tests.Injector
         public async Task<string> GetValue3(string val)
         {
             await Task.Delay(3000);
+
+            await new Service1().GetValue4("1");
+            Utility.WriteLine($"outer GetValue4-1");
+
+            var builder = new ProxyGeneratorBuilder();
+            builder.Configure(_ => { });
+            var proxyGenerator = builder.Build();
+            var proxy = proxyGenerator.CreateInterfaceProxy<IService1, Service1>();
+            await proxy.GetValue4("2");
+            Utility.WriteLine($"outer GetValue4-2");
+
+            Utility.WriteLine($"inner GetValue3 1");
             return val;
+        }
+
+        [InvokeEndFailtIntercept]
+        public async Task GetValue4(string val)
+        {
+            await Task.Delay(3000);
+            Utility.WriteLine($"inner GetValue4-{val}");
         }
     }
 
     public class AsyncBlockTest : InjectorTestBase
     {
+
 
         [Fact]
         public async void AsyncBlock()
@@ -108,18 +138,18 @@ namespace AspectCore.Tests.Injector
             var proxy = proxyGenerator.CreateInterfaceProxy<IService1, Service1>();
             // IService proxy = new Service();
             var startTime = DateTime.Now;
-            Console.WriteLine($"{startTime}:start");
+            Utility.WriteLine($"{startTime}:start");
 
             var val = proxy.GetValue("le");
 
             var endTime = DateTime.Now;
 
             Assert.True((endTime - startTime).TotalSeconds < 2);
-            Console.WriteLine($"{endTime}:should return immediately");
-            Console.WriteLine($"{DateTime.Now}:{val.Result}");
+            Utility.WriteLine($"{endTime}:should return immediately");
+            Utility.WriteLine($"{DateTime.Now}:{val.Result}");
 
             var val2 = await proxy.GetValue2("le2");
-            Console.WriteLine($"{val2}");
+            Utility.WriteLine($"{val2}");
 
 
         }
@@ -135,7 +165,7 @@ namespace AspectCore.Tests.Injector
             // IService proxy = new Service();
 
             var val3 = await proxy.GetValue3("le3");
-            Console.WriteLine($"{val3}");
+            Utility.WriteLine($"outer GetValue3-1");
         }
     }
 }
