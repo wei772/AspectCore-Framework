@@ -50,6 +50,7 @@ namespace AspectCore.Tests.Injector
         {
             var startTime = DateTime.Now;
             Console.WriteLine($"{startTime}:start");
+            //  var task= next(context);
             await next(context);
             //未等待被代理的方法执行
             var endTime = DateTime.Now;
@@ -120,6 +121,18 @@ namespace AspectCore.Tests.Injector
             var val2 = await proxy.GetValue2("le2");
             Console.WriteLine($"{val2}");
 
+
+        }
+
+
+        [Fact]
+        public async void InvokeEndFailtIntercept()
+        {
+            var builder = new ProxyGeneratorBuilder();
+            builder.Configure(_ => { });
+            var proxyGenerator = builder.Build();
+            var proxy = proxyGenerator.CreateInterfaceProxy<IService1, Service1>();
+            // IService proxy = new Service();
 
             var val3 = await proxy.GetValue3("le3");
             Console.WriteLine($"{val3}");

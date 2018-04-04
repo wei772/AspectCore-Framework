@@ -81,6 +81,10 @@ namespace AspectCore.DynamicProxy
             var returnValue = reflector.Invoke(_implementation, Parameters);
             AspectContextRuntimeExtensions.AwaitIfAsync(this, returnValue);
             ReturnValue = returnValue;
+            if(ReturnValue is Task taskValue)
+            {
+                return taskValue;
+            }
             return TaskUtils.CompletedTask;
         }
 
